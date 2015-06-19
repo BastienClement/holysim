@@ -1,8 +1,10 @@
 package holysim.engine
 
-import holysim.utils.Reactive
+import scala.collection.mutable
+import holysim.utils.{Reactive, Memoized}
 
 import scala.math.Numeric
+import Modifier._
 
 /**
  * ModifierValue constructor
@@ -10,6 +12,11 @@ import scala.math.Numeric
 abstract class Modifier[T](val base: T, val fold: (T, T) => T) {
 	def apply(value: Reactive[T]) = ModifierValue(this, value)
 }
+
+/**
+ * The combined modifier with an associated value
+ */
+case class ModifierValue[T](mod: Modifier[T], value: Reactive[T])
 
 /**
  * Modifer classes for common pattern
@@ -20,21 +27,37 @@ object Modifier {
 	abstract class Maximum[T](base: T)(implicit n: Numeric[T]) extends Modifier[T](base, (a, b) => n.max(a, b))
 	abstract class Minimum[T](base: T)(implicit n: Numeric[T]) extends Modifier[T](base, (a, b) => n.min(a, b))
 	abstract class Unique[T](base: T) extends Modifier[T](base, (a, b) => b)
-}
 
-/**
- * The combined modifier with an associated value
- */
-case class ModifierValue[T](mod: Modifier[T], value: Reactive[T])
+	trait Target { this: Actor =>
+		/**
+		 * The cache of all applied aura effects
+		 */
+		val modifiers_effects = Memoized { (mod: Modifier[_]) => mutable.Set[Reactive[_]]() }
+
+		/**
+		 * Construct the modifier reactive value
+		 */
+		private def build_modifier[T](mod: Modifier[T]) = Reactive[T] {
+			val effects = modifiers_effects(mod).asInstanceOf[Traversable[Reactive[T]]]
+			effects.map(_.value).fold(mod.base)(mod.fold)
+		}
+
+		/**
+		 * The cache of all modifiers created for this actor
+		 */
+		private val modifiers = Memoized((mod: Modifier[_]) => build_modifier(mod))
+
+		/**
+		 * Get a specific modifier reactive value
+		 */
+		def modifier[T](mod: Modifier[T]): Reactive[T] = modifiers(mod).asInstanceOf[Reactive[T]]
+	}
+}
 
 /**
  * Implemented modifiers
  */
 object Mod {
-	// Import modifiers classes
-
-	import Modifier._
-
 	// Base stats
 	object BaseIntellect extends Additive
 	object BaseStamina extends Additive

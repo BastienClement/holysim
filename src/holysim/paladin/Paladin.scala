@@ -1,7 +1,13 @@
 package holysim.paladin
 
-import holysim.engine.{Actor, Simulator}
+import holysim.engine.{Actor, PlayerStats}
 
-class Paladin(implicit val sim: Simulator) extends Actor with PaladinAuras with PaladinProcs with PaladinSpells {
-	println("Creating a paladin")
+class Paladin extends Actor with PlayerStats with PaladinAuras with PaladinSpells {
+	// Apply passive auras
+	this gain BaseStats
+	this gain PlateSpecialization
+	this gain SanctifiedLight
+	this gain HolyInsight
+	this gain InfusionOfLight
+	this gain IlluminatedHealing
 }
