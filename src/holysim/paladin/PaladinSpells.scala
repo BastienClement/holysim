@@ -1,13 +1,61 @@
 package holysim.paladin
 
+import holysim.engine.Mod.{SpellReceivedHealingPercent, SpellHealingPercent}
 import holysim.engine._
+import holysim.utils.Reactive
 
-trait PaladinSpells { self: Paladin =>
+trait PaladinSpells {
+	self: Paladin =>
+
 	/**
 	 * Imbues you with wrathful light, increasing healing done by 100% and haste, critical strike chance,
 	 * and damage by 20% for 20 sec. (3 min cooldown)
 	 */
-	object AvengingWrath extends Spell("Avenging Wrath")
+	object AvengingWrath extends Spell("Avenging Wrath") with Spell.Cooldown {
+		// 3 min base (1.5 min glyphed)
+		val cooldown = Reactive {
+			if (Glyph.MercifulWrath) 90000 else 180000
+		}
+
+		/** The base buff */
+		case class Buff() extends Aura("Avenging Wrath") with Aura.Duration with Aura.Modifiers {
+			// 20 sec base (30 sec talented)
+			val duration = if (Talent.SanctifiedWrath) 30000 else 20000
+
+			// Merciful Wrath reduce effects by 50%
+			if (Glyph.MercifulWrath) {
+				modifiers += Mod.HealingPercent(1.50)
+				modifiers += Mod.CritChancePercent(10)
+				modifiers += Mod.HastePercent(1.10)
+			} else {
+				modifiers += Mod.HealingPercent(2.00)
+				modifiers += Mod.CritChancePercent(20)
+				modifiers += Mod.HastePercent(1.20)
+			}
+
+			// Automatically gain SanctifiedWrath
+			onGain += { target =>
+				if (Talent.SanctifiedWrath) target gain SanctifiedWrath
+			}
+
+			// Automatically lose SanctifiedWrath
+			onLose += { target =>
+				if (Talent.SanctifiedWrath) target lose SanctifiedWrath
+			}
+		}
+
+		/** Additional effects with Sanctified Wrath */
+		object SanctifiedWrath extends Aura("Sanctified Wrath") with Aura.Modifiers {
+			// Merciful Wrath reduce effects by 50%
+			if (Glyph.MercifulWrath) {
+				modifiers += HolyShock.CriticalChanceBonus(10)
+				modifiers += HolyShock.CooldownMultiplier(0.75)
+			} else {
+				modifiers += HolyShock.CriticalChanceBonus(20)
+				modifiers += HolyShock.CooldownMultiplier(0.50)
+			}
+		}
+	}
 
 	/**
 	 * Your heals, including multistrikes, on other party or raid members will also heal the Beacon of Light target
@@ -20,9 +68,22 @@ trait PaladinSpells { self: Paladin =>
 	 * Empowered Beacon of Light (Level 92+)
 	 * Your single-target heals heal your Beacon of Light target for 10% more. Also applies to Beacon of Faith.
 	 */
-	class BeaconSpell(name: String) extends Spell(name) {
-		object Beaconed extends Aura(name)
-		val target: Actor = null
+	class BeaconSpell(name: String) extends Spell(name) with Spell.Cooldown {
+		val cooldown = Reactive(3000)
+
+		object Beacon extends Aura(name) with Aura.Modifiers with Aura.SingleTarget {
+			modifiers ++= List(
+				WordOfGlory, HolyLight, FlashOfLight, HolyShock
+			).map(SpellReceivedHealingPercent(_, owner)(1.10))
+
+			// Apply Beacon Transfert Aura to beacon owner
+			onGain += (_ => owner gain BeaconTransferAura)
+			onLose += (_ => owner lose BeaconTransferAura)
+		}
+
+		object BeaconTransferAura extends Aura(name + " (Transfert Aura)") {
+
+		}
 	}
 
 	val BeaconOfLight = new BeaconSpell("Beacon of Light")
@@ -77,12 +138,12 @@ trait PaladinSpells { self: Paladin =>
 	 */
 	object HolyRadiance extends Spell("Holy Radiance") {
 		object Daybreak extends Proc {
-			object DaybreakAura extends Aura("Daybreak") with Aura.Duration with Aura.Stackable {
+			case class DaybreakAura() extends Aura("Daybreak") with Aura.Duration with Aura.Stackable {
 				val duration = 10000
 				val max_stacks = 2
 			}
 
-			def trigger(e: Event) = self gain DaybreakAura
+			def trigger(e: Event) = self gain DaybreakAura()
 		}
 	}
 
@@ -96,6 +157,9 @@ trait PaladinSpells { self: Paladin =>
 	 * Your Holy Light and Flash of Light have a 10% chance to cause your next Holy Shock to not trigger a cooldown.
 	 */
 	object HolyShock extends Spell("Holy Shock") {
+		object CriticalChanceBonus extends Modifier.Additive
+		object CooldownMultiplier extends Modifier.Multiplicative
+
 		object EnhancedHolyShock extends Aura("Enhanced Holy Shock") with Aura.Duration {
 			val duration = 15000
 		}
@@ -106,6 +170,22 @@ trait PaladinSpells { self: Paladin =>
 	 * for up to [(24.4992% of Spell power) * 3].
 	 */
 	object LightOfDawn extends Spell("Light of Down") {
+
+	}
+
+	/**
+	 * Heals a friendly target for an amount equal to your maximum health.
+	 * Cannot be used on a target with Forbearance.
+	 * Causes Forbearance for 1 min.
+	 */
+	object LayOnHands extends Spell("Lay on Hands") {
+
+	}
+
+	/**
+	 * Consumes up to 3 Holy Power to heal a friendly target for up to (330% of Spell power).
+	 */
+	object WordOfGlory extends Spell("Word of Glory") {
 
 	}
 }

@@ -1,17 +1,17 @@
 package holysim.engine
 
-import holysim.utils.{Memoized, Reactive}
+import holysim.utils.{CallbackListArg, Memoized, Reactive}
 
 import scala.collection.mutable
 import scala.reflect._
 
-class Aura(name: String)(implicit o: Actor) {
+class Aura(name: String)(implicit impl_owner: Actor) {
 	type self = this.type
-	val owner = o
+	val owner = impl_owner
 
-	def on_gain(target: Actor) = {}
-	def on_lose(target: Actor) = {}
-	def on_refresh(other: self) = {}
+	val onGain = new CallbackListArg[Actor]()
+	val onLose = new CallbackListArg[Actor]()
+	val onRefresh = new CallbackListArg[self]()
 }
 
 object Aura {
@@ -20,6 +20,7 @@ object Aura {
 	 */
 	trait Target {
 		this: Actor =>
+
 		private val auras = Memoized { (mod: Class[_]) => mutable.Map[Actor, Aura]() }
 
 		/**
@@ -29,10 +30,10 @@ object Aura {
 			val instances = auras(aura.getClass)
 			instances.get(owner) match {
 				case Some(instance) =>
-					instance.on_refresh(aura.asInstanceOf[instance.type])
+					instance.onRefresh(aura.asInstanceOf[instance.type])
 				case None =>
 					instances(owner) = aura
-					aura.on_gain(this)
+					aura.onGain(this)
 			}
 		}
 
@@ -50,7 +51,7 @@ object Aura {
 			val instances = auras(clazz)
 			instances.get(owner) match {
 				case Some(instance) =>
-					instance.on_lose(this)
+					instance.onLose(this)
 					instances.remove(owner)
 				case None =>
 				/* Nothing */
@@ -64,18 +65,16 @@ object Aura {
 	 * Add stats modifier to an Aura
 	 */
 	trait Modifiers extends Aura {
-		val modifiers: Traversable[ModifierValue[_]]
+		val modifiers = mutable.ArrayBuffer[ModifierValue[_]]()
 
-		abstract override def on_gain(target: Actor) = {
-			super.on_gain(target)
+		onGain += { target =>
 			modifiers foreach { mv =>
 				target.modifiers_effects(mv.mod).add(mv.value)
 				mv.value ~> target.modifier(mv.mod)
 			}
 		}
 
-		abstract override def on_lose(target: Actor) = {
-			super.on_lose(target)
+		onLose += { target =>
 			modifiers foreach { mv =>
 				target.modifiers_effects(mv.mod).remove(mv.value)
 				mv.value ~/> target.modifier(mv.mod)
@@ -88,19 +87,7 @@ object Aura {
 	 */
 	trait Duration extends Aura {
 		val duration: Int
-
-		abstract override def on_gain(target: Actor) = {
-			super.on_gain(target)
-		}
-
-		abstract override def on_lose(target: Actor) = {
-			super.on_lose(target)
-		}
-
-		abstract override def on_refresh(other: self) = {
-			super.on_refresh(other)
-			println("extend duration", other.duration)
-		}
+		onRefresh += { other => println("extend duration", other.duration) }
 	}
 
 	/**
@@ -110,21 +97,16 @@ object Aura {
 		val stacks = Reactive {0}
 		val max_stacks: Int
 
-		abstract override def on_gain(target: Actor) = {
-			super.on_gain(target)
-			stacks := 1
-		}
+		onGain += (_ => stacks := 1)
+		onLose += (_ => stacks := 0)
 
-		abstract override def on_lose(target: Actor) = {
-			super.on_lose(target)
-			stacks := 0
-		}
+		onRefresh += (other => if (stacks < max_stacks) stacks ~ (_ + other.stacks))
+	}
 
-		abstract override def on_refresh(other: self) = {
-			super.on_refresh(other)
-			if (stacks < max_stacks) {
-				stacks ~ (_ + other.stacks)
-			}
-		}
+	/**
+	 * Single target aura
+	 */
+	trait SingleTarget {
+		var target: Actor = null
 	}
 }

@@ -10,21 +10,23 @@ trait PaladinAuras extends common.Auras {
 	 * Character base stats
 	 */
 	object BaseStats extends Aura("Base Stats") with Aura.Modifiers {
-		val modifiers = BaseIntellect(1045) :: BaseStamina(890) :: BaseSpirit(780) :: Nil
+		modifiers += BaseIntellect(1045)
+		modifiers += BaseStamina(890)
+		modifiers += BaseSpirit(780)
 	}
 
 	/**
 	 * Increases your Intellect by 5% while wearing only Plate armor.
 	 */
 	object PlateSpecialization extends Aura("Plate Specialization") with Aura.Modifiers {
-		val modifiers = IntellectPercent(1.05) :: Nil
+		modifiers += IntellectPercent(1.05)
 	}
 
 	/**
 	 * You gain 5% more of the Critical Strike stat from all sources.
 	 */
 	object SanctifiedLight extends Aura("Sanctified Light") with Aura.Modifiers {
-		val modifiers = CriticalStrikeAttunement(1.05) :: Nil
+		modifiers += CriticalStrikeAttunement(1.05)
 	}
 
 	/**
@@ -33,12 +35,31 @@ trait PaladinAuras extends common.Auras {
 	 * Allows 50% of your mana regeneration from Spirit to continue while in combat.
 	 */
 	object HolyInsight extends Aura("Holy Insight") with Aura.Modifiers {
-		case object HealingBonus extends Modifier.Multiplicative
-		case object WoGBonus extends Modifier.Multiplicative
-		case object LoDBonus extends Modifier.Multiplicative
+		// (#1) Apply Aura: Mod Mana Pool %
+		modifiers += ManaPoolPercent(5.0)
 
-		val modifiers = ManaPoolPercent(5.0) :: InCombatRegen(0.5) ::
-				HealingBonus(1.25) :: WoGBonus(1.2) :: LoDBonus(1.5) :: Nil
+		// (#3) Apply Aura: Allow % of Mana Regeneration to Continue in Combat
+		modifiers += InCombatRegen(0.5)
+
+		// (#6) Apply Aura: Modifies Damage/Healing Done
+		modifiers ++= List(
+			LayOnHands, HolyLight, HolyRadiance, FlashOfLight, HolyShock
+		).map(SpellHealingPercent(_)(1.25))
+
+		// (#7) Apply Aura: Modifies Periodic Damage/Healing Done (22)
+		//modifiers += SpellHealingPercent(StayOfExecutionTick)(1.5)
+
+		// (#9) Apply Aura: Modifies Damage/Healing Done
+		modifiers += SpellHealingPercent(LightOfDawn)(1.5)
+
+		// (#10) Apply Aura: Modifies Periodic Damage/Healing Done (22)
+		//modifiers += SpellHealingPercent(EternalFlameTick)(1.5)
+
+		// (#11) Apply Aura: Modifies Damage/Healing Done
+		modifiers += SpellHealingPercent(FlashOfLight)(1.25)
+
+		// (#12) Apply Aura: Modifies Damage/Healing Done
+		modifiers += SpellHealingPercent(WordOfGlory)(1.25)
 	}
 
 	/**
@@ -48,7 +69,7 @@ trait PaladinAuras extends common.Auras {
 	 * Also increases your haste by 10%.
 	 */
 	object InfusionOfLight extends Aura("Infusion of Light") with Aura.Modifiers {
-		val modifiers = HastePercent(1.1) :: Nil
+		modifiers += HastePercent(1.1)
 	}
 
 	/**
@@ -56,9 +77,17 @@ trait PaladinAuras extends common.Auras {
 	 * healed lasting 15 sec. Does not trigger from healing caused by Beacon of Light.
 	 */
 	object IlluminatedHealing extends Aura("Mastery: Illuminated Healing") with Aura.Modifiers {
-		val modifiers = MasteryFactor(1.25) :: Nil
+		modifiers += MasteryFactor(1.25)
 		object Shield extends Aura("Illuminated Healing") with Aura.Duration {
 			val duration = 15000
 		}
+	}
+
+	/**
+	 * Fills you with Holy Light, increasing healing done by 5% and giving melee attacks a chance to
+	 * heal you for (16% of Spell power).
+	 */
+	object SealOfInsight extends Aura("Seal of Insight") with Aura.Modifiers {
+		modifiers += HealingPercent(1.05)
 	}
 }

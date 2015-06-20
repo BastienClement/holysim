@@ -105,4 +105,9 @@ object Mod {
 	// Mana pool
 	object ManaPoolPercent extends Multiplicative
 	object InCombatRegen extends Maximum[Double](0)
+
+	// Healing
+	object HealingPercent extends Multiplicative
+	case class SpellHealingPercent(spell: Spell) extends Multiplicative
+	case class SpellReceivedHealingPercent(spell: Spell, source: Actor) extends Multiplicative
 }
