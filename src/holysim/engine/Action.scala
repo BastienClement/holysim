@@ -1,7 +1,7 @@
 package holysim.engine
 
 object Action {
-	def apply(body: => Unit) = new CallbackAction(() => body)
+	def apply(body: () => Unit) = new CallbackAction(body)
 
 	class CallbackAction private[Action] (body: () => Unit) extends Action {
 		def execute() = body()

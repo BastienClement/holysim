@@ -1,7 +1,10 @@
 package holysim.engine
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
+import holysim.engine.Mod.{SpellHealingReceivedPercent, SpellHealingPercent}
 import holysim.utils.{Reactive, Memoized}
+import scala.reflect.runtime.universe._
 
 import scala.math.Numeric
 import Modifier._
@@ -38,7 +41,7 @@ object Modifier {
 		 * Construct the modifier reactive value
 		 */
 		private def build_modifier[T](mod: Modifier[T]) = Reactive[T] {
-			val effects = modifiers_effects(mod).asInstanceOf[Traversable[Reactive[T]]]
+			val effects = modifiers_effects(mod).toList.asInstanceOf[List[Reactive[T]]]
 			effects.map(_.value).fold(mod.base)(mod.fold)
 		}
 
@@ -59,55 +62,58 @@ object Modifier {
  */
 object Mod {
 	// Base stats
-	object BaseIntellect extends Additive
-	object BaseStamina extends Additive
-	object BaseSpirit extends Additive
+	case object BaseIntellect extends Additive
+	case object BaseStamina extends Additive
+	case object BaseSpirit extends Additive
 
-	object IntellectScore extends Additive
-	object StaminaScore extends Additive
-	object SpiritScore extends Additive
+	case object IntellectScore extends Additive
+	case object StaminaScore extends Additive
+	case object SpiritScore extends Additive
 
 	// Blessing of Kings
-	object StrengthPercent extends Multiplicative
-	object AgilityPercent extends Multiplicative
-	object IntellectPercent extends Multiplicative
+	case object StrengthPercent extends Multiplicative
+	case object AgilityPercent extends Multiplicative
+	case object IntellectPercent extends Multiplicative
 
 	// Stamina
-	object StaminaPercent extends Multiplicative
+	case object StaminaPercent extends Multiplicative
 
 	// Crit
-	object CriticalStrikeAttunement extends Multiplicative
-	object CriticalStrikeScore extends Additive
-	object CritChancePercent extends Additive
+	case object CriticalStrikeAttunement extends Multiplicative
+	case object CriticalStrikeScore extends Additive
+	case object CritChancePercent extends Additive
 
 	// Haste
-	object HasteAttunement extends Multiplicative
-	object HasteScore extends Additive
-	object HastePercent extends Multiplicative
+	case object HasteAttunement extends Multiplicative
+	case object HasteScore extends Additive
+	case object HastePercent extends Multiplicative
 
 	// Mastery
-	object MasteryAttunement extends Multiplicative
-	object MasteryScore extends Additive
-	object MasteryFactor extends Unique[Double](0)
+	case object MasteryAttunement extends Multiplicative
+	case object MasteryScore extends Additive
+	case object MasteryFactor extends Unique[Double](0)
 
 	// Multistrike
-	object MultistrikeAttunement extends Multiplicative
-	object MultistrikeScore extends Additive
-	object MultistrikePercent extends Additive
+	case object MultistrikeAttunement extends Multiplicative
+	case object MultistrikeScore extends Additive
+	case object MultistrikePercent extends Additive
 
 	// Versatility
-	object VersatilityScore extends Additive
-	object VersatilityPercent extends Additive
+	case object VersatilityScore extends Additive
+	case object VersatilityPercent extends Additive
 
 	// Spellpower
-	object SpellPowerPercent extends Multiplicative
+	case object SpellPowerPercent extends Multiplicative
 
 	// Mana pool
-	object ManaPoolPercent extends Multiplicative
-	object InCombatRegen extends Maximum[Double](0)
+	case object ManaPoolPercent extends Multiplicative
+	case object InCombatRegenPercent extends Maximum[Double](0)
 
 	// Healing
-	object HealingPercent extends Multiplicative
-	case class SpellHealingPercent(spell: Spell) extends Multiplicative
-	case class SpellReceivedHealingPercent(spell: Spell, source: Actor) extends Multiplicative
+	case object HealingPercent extends Multiplicative
+	case class SpellHealingPercent(spell_identity: BoundSymbol[Spell]) extends Multiplicative
+	case class SpellHealingReceivedPercent(spell_identity: BoundSymbol[Spell], source: Actor) extends Multiplicative
+
+	// Damage
+	case object DamageTakenPercent extends Multiplicative
 }

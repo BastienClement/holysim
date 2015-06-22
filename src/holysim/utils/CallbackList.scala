@@ -4,15 +4,16 @@ import scala.collection.mutable.ArrayBuffer
 
 class CallbackList(oneshot: Boolean = false) {
 	type Callback = () => Unit
-	private var callbacks = ArrayBuffer[Callback]()
+	private var callbacks = Vector[Callback]()
 
-	def +=(cb: => Unit) = callbacks += (() => cb)
+	def +=(cb: => Unit) = callbacks = callbacks :+ (() => cb)
+	def ~=(cb: => Unit) = callbacks = (() => cb) +: callbacks
 
 	def execute() = callbacks.foreach(c => c())
 
 	def flush() = {
 		execute()
-		callbacks.clear()
+		callbacks = Vector()
 	}
 
 	def apply() = {
@@ -23,15 +24,16 @@ class CallbackList(oneshot: Boolean = false) {
 
 class CallbackListArg[E](oneshot: Boolean = false) {
 	type Callback = (E) => Unit
-	private var callbacks = ArrayBuffer[Callback]()
+	private var callbacks = Vector[Callback]()
 
-	def +=(cb: (E) => Unit) = callbacks += cb
+	def +=(cb: (E) => Unit) = callbacks = callbacks :+ cb
+	def ~=(cb: (E) => Unit) = callbacks = cb +: callbacks
 
 	def execute(e: E) = callbacks.foreach(c => c(e))
 
 	def flush(e: E) = {
 		execute(e)
-		callbacks.clear()
+		callbacks = Vector()
 	}
 
 	def apply(e: E) = {

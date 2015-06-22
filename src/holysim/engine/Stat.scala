@@ -1,7 +1,7 @@
 package holysim.engine
 
 import scala.language.implicitConversions
-import holysim.engine.PlayerStats.VersatilityFactors
+import holysim.engine.ActorStats.VersatilityFactors
 import holysim.utils.Reactive
 
 sealed trait Stat {
@@ -40,20 +40,16 @@ object Stat {
 	}
 }
 
-object PlayerStats {
+object ActorStats {
 	case class VersatilityFactors(out: Double, in: Double)
 }
 
-trait PlayerStats {
+trait ActorStats {
 	this: Actor =>
 
 	// Automatically convert stats and modifiers identifiers to actual values
 	private implicit def statToValue(stat: Stat): Int = gear(stat)
 	private implicit def modifierToValue[T](mod: Modifier[T]): T = modifier(mod)
-
-	// Implicit conversion
-	private implicit def doubleToInt(d: Double): Int = d.toInt
-	private implicit def longToInt(l: Long): Int = l.toInt
 
 	val intellect = Reactive[Int] {
 		(Mod.BaseIntellect + Stat.Intellect + Mod.IntellectScore) * Mod.IntellectPercent

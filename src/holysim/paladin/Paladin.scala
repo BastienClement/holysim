@@ -1,33 +1,42 @@
 package holysim.paladin
 
-import holysim.engine.{Actor, PlayerStats}
+import holysim.engine.{Actor, ActorStats}
 import holysim.utils.Reactive
 
-class Paladin extends Actor with PlayerStats with PaladinAuras with PaladinSpells {
-	private def Flag = Reactive { false }
-
+class Paladin(val name: String) extends Actor with PaladinAuras with PaladinSpells {
 	// Glyphs
 	object Glyph {
-		var BeaconOfLight = Flag
-		var Divinity = Flag
-		var FlashOfLight = Flag
-		var MercifulWrath = Flag
-		var ProtectorOfTheInnocent = Flag
+		var BeaconOfLight = false
+		var Divinity = false
+		var FlashOfLight = false
+		var MercifulWrath = false
+		var ProtectorOfTheInnocent = false
 	}
 
 	// Talents
 	object Talent {
-		var DivinePurpose = Flag
-		var EternalFlame = Flag
-		var SanctifiedWrath = Flag
-		var SavedByTheLight = Flag
+		var DivinePurpose = false
+		var EternalFlame = false
+		var SanctifiedWrath = false
+		var SavedByTheLight = false
+	}
+
+	// Perks
+	object Perk {
+		var ImprovedForbearance = true
+		var ImprovedDaybreak = true
+		var EnhancedHolyShock = true
+		var EmpoweredBeaconOfLight = true
 	}
 
 	// Apply passive auras
-	this gain BaseStats
-	this gain PlateSpecialization
-	this gain SanctifiedLight
-	this gain HolyInsight
-	this gain InfusionOfLight
-	this gain IlluminatedHealing
+	onPrepare += {
+		this gain BaseStats
+		this gain PlateSpecialization
+		this gain SanctifiedLight
+		this gain HolyInsight
+		this gain InfusionOfLight
+		this gain IlluminatedHealing
+		this gain SealOfInsight
+	}
 }

@@ -7,8 +7,14 @@ import holysim.engine._
 import holysim.paladin._
 
 object HolySim extends App {
+	Simulator.debug = true
+
+	implicit class BlizzRound(val n: Double) extends AnyVal {
+		def blizzr: Int = (if (n - n.floor == 0.5) n.floor + (n.floor % 2) else n.round).toInt
+	}
+
 	val sim = Simulator {
-		val Blash = new Paladin {
+		val Blash = new Paladin("Blash") {
 			// Gear
 			this equip HelmetOfGuidingLight_M.gem(50.crit)
 			this equip FeldsparsControlChoker_M.enchant(75.crit)
@@ -27,10 +33,20 @@ object HolySim extends App {
 			this equip FangOfTheEarth_M.gem(50.crit)
 			this equip HeartOfTheClefthoof_M
 
+			Talent.EternalFlame = true
+			Talent.DivinePurpose = true
+
+			Glyph.BeaconOfLight = true
+			Glyph.MercifulWrath = true
+			Glyph.ProtectorOfTheInnocent = true
+
 			// Blood elf racial
-			this gain ArcaneAcuity
+			onPrepare += this gain ArcaneAcuity
+			//onPrepare += this gain PercentStatsBuff
 		}
+
+		val Jouzladin = new Paladin("Jouzladin") {}
 	}
 
-	println(sim.run())
+	sim.run()
 }
