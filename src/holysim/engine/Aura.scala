@@ -45,13 +45,11 @@ object Aura {
 		 * Removes an aura
 		 */
 		def get[A <: Aura](aura_symbol: BoundSymbol[A])(implicit owner: Actor): Option[A] = auras.get(aura_symbol).get(owner)
-		def get[A <: Aura](aura: A)(implicit owner: Actor): Option[A] = get(aura.identity.bindTo[A])(owner)
 
 		/**
 		 * Check the presence of an aura
 		 */
 		def has[A <: Aura](aura_symbol: BoundSymbol[A])(implicit owner: Actor): Boolean = auras.get(aura_symbol).get(owner).isDefined
-		def has[A <: Aura](aura: A)(implicit owner: Actor): Boolean = has(aura.identity.bindTo[A])(owner)
 
 		/**
 		 * Removes an aura
@@ -66,7 +64,6 @@ object Aura {
 				/* Nothing */
 			}
 		}
-		def lose[A <: Aura](aura: A)(implicit owner: Actor): Unit = lose(aura.identity.bindTo[A])(owner)
 	}
 
 	/**

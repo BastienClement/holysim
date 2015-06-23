@@ -1,5 +1,12 @@
 package holysim.engine
 
+import scala.language.implicitConversions
+import holysim.paladin.Paladin
+
+trait Action {
+	def execute(): Unit
+}
+
 object Action {
 	def apply(body: () => Unit) = new CallbackAction(body)
 
@@ -8,12 +15,33 @@ object Action {
 	}
 }
 
-trait Action {
-	def execute(): Unit
+trait ActorAction extends Action {
+	def available: Boolean
 }
 
-object DummyAction extends Action {
-	def execute() = {}
+object ActorAction {
+	/**
+	 * Spell casting action
+	 */
+	case class Cast(spell: Spell)(implicit val owner: Actor) extends ActorAction {
+		// Default to cast on self
+		private[this] var target: QueryableActor = owner
+
+		def on(t: QueryableActor) = {
+			target = t
+			this
+		}
+
+		def execute() = {
+
+		}
+
+		def available = false
+	}
+}
+
+case class ActorPriorityList(actions: ActorAction*) {
+	def select = actions.find(_.available)
 }
 
 case class ScheduledAction(time: Int, action: Action) extends Ordered[ScheduledAction] {

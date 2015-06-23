@@ -6,14 +6,14 @@ package object engine {
 	implicit def doubleToInt(d: Double): Int = d.toInt
 	implicit def longToInt(l: Long): Int = l.toInt
 
+	implicit def autoSome[T](value: T): Option[T] = Some(value)
+
 	trait WithIdentity {
 		val identity: Symbol
 	}
 
 	object BoundSymbol {
-		//implicit def fromAura[A <: Aura](aura: A): BoundSymbol[A] = aura.identity.bindTo[A]
-		//implicit def fromSpell[S <: Spell](spell: S): BoundSymbol[S] = spell.identity.bindTo[S]
-		implicit def fromAny[T <: WithIdentity](obj: T): BoundSymbol[T] = obj.identity.bindTo[T]
+		implicit def fromWithIdentity[T <: WithIdentity](obj: T): BoundSymbol[T] = obj.identity.bindTo[T]
 		implicit def fromSymbol[T](identity: Symbol): BoundSymbol[T] = identity.bindTo[T]
 	}
 

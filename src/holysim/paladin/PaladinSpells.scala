@@ -87,8 +87,8 @@ trait PaladinSpells {
 		onCast += (_.target gain Beacon)
 	}
 
-	val BeaconOfLight = new BeaconSpell('BeaconOfLight)
-	val BeaconOfFaith = new BeaconSpell('BeaconOfFaith)
+	object BeaconOfLight extends BeaconSpell('BeaconOfLight)
+	object BeaconOfFaith extends BeaconSpell('BeaconOfFaith)
 
 	/**
 	 * Places a beacon of insight on a party or raid member, increasing their healing received from your next direct

@@ -2,9 +2,10 @@ package holysim.engine
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.DynamicVariable
-import holysim.engine.Action.CallbackAction
 import holysim.engine.Simulator.State
+import holysim.utils.Memoized
 
 object Simulator {
 	/** Create a new simulator instance using a given initialization function */
@@ -12,6 +13,7 @@ object Simulator {
 		val sim = new Simulator
 		current.withValue(sim) {
 			init
+			sim.prepareRoster()
 			sim
 		}
 	}
@@ -35,6 +37,13 @@ class Simulator private {
 
 	/** The set of actors in this simulation */
 	val actors = mutable.Set[Actor]()
+	lazy val actors_pool = actors.toVector
+
+	def prepareRoster(): Unit = {
+		for (i <- 1 to 2) new TankDummy(i)
+		for (i <- 1 to 3) new HealerDummy(i)
+		for (i <- 1 to 10) new DamageDummy(i)
+	}
 
 	/** The combat log for this simulation */
 	val log = new CombatLog(this)
@@ -92,6 +101,9 @@ class Simulator private {
 	def state = current_state
 
 	def run() = Simulator.current.withValue(this) {
+		// Prepare roster
+		prepareRoster()
+
 		// Prepare actors
 		actors.foreach(_.onPrepare())
 

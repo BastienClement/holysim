@@ -4,6 +4,8 @@ import holysim.engine.{Actor, ActorStats}
 import holysim.utils.Reactive
 
 class Paladin(val name: String) extends Actor with PaladinAuras with PaladinSpells {
+	val role = Actor.Role.Healer
+
 	// Glyphs
 	object Glyph {
 		var BeaconOfLight = false

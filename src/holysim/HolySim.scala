@@ -2,6 +2,8 @@ package holysim
 
 import holysim.common.Items.BRF._
 import holysim.common.Items.Paladin._
+import holysim.engine.ActorAction.Cast
+import holysim.engine.ActorQuery._
 import holysim.engine.Stat.Impl
 import holysim.engine._
 import holysim.paladin._
@@ -13,7 +15,7 @@ object HolySim extends App {
 		def blizzr: Int = (if (n - n.floor == 0.5) n.floor + (n.floor % 2) else n.round).toInt
 	}
 
-	val sim = Simulator {
+	implicit val sim = Simulator {
 		val Blash = new Paladin("Blash") {
 			// Gear
 			this equip HelmetOfGuidingLight_M.gem(50.crit)
@@ -43,10 +45,27 @@ object HolySim extends App {
 			// Blood elf racial
 			onPrepare += this gain ArcaneAcuity
 			//onPrepare += this gain PercentStatsBuff
+
+			val beaconTargets = (p: Actor) => p.has(BeaconOfLight.Beacon) || p.has(BeaconOfFaith.Beacon)
+
+			// Default actor selection order
+			// - Not beaconed targets
+			// - Beaconed targets
+			// -
+			def Q(query: ActorQuery) = query excluding beaconTargets or query or (select random Tank)
+
+			ActorPriorityList(
+				Cast (BeaconOfLight) on (select first Tank),
+				Cast (BeaconOfFaith) on (select second Tank),
+				Cast (HolyShock) on Q(select mostInjured Player excluding beaconTargets)
+			)
 		}
 
 		val Jouzladin = new Paladin("Jouzladin") {}
 	}
 
 	sim.run()
+
+	val query = select mostInjured Player
+	println(query.get)
 }
