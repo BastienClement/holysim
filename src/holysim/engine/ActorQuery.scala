@@ -159,12 +159,12 @@ object ActorQuery {
 	implicit def predicateToDynamic(predicate: (Actor) => Boolean): DynamicFilter = new ActorCustomFilter(predicate) with DynamicFilter
 
 	// Actor category filters  ==========================================================================================
-	object Actor extends ActorDummyFilter
-	object Enemy extends ActorFilter with StaticFilter { def apply(actor: Actor) = true }
-	object Player extends ActorFilter with StaticFilter { def apply(actor: Actor) = true }
-	object Tank extends ActorFilter with StaticFilter { def apply(actor: Actor) = true }
-	object Healer extends ActorFilter with StaticFilter { def apply(actor: Actor) = true }
-	object Damager extends ActorFilter with StaticFilter { def apply(actor: Actor) = true }
+	object Unit extends ActorDummyFilter
+	object Target extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Hostile }
+	object Player extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Friendly }
+	object Tank extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Tank }
+	object Healer extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Healer }
+	object Damager extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Damage }
 
 	// Actor selectors ==================================================================================================
 	object RandomSelector extends ActorSelector {

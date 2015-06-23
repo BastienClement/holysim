@@ -1,11 +1,13 @@
 package holysim.paladin
 
-import holysim.engine.{Actor, ActorStats}
+import holysim.engine.{Player, Actor, ActorStats}
 import holysim.utils.Reactive
 
-class Paladin(val name: String) extends Actor with PaladinAuras with PaladinSpells {
-	val role = Actor.Role.Healer
+object Paladin {
 
+}
+
+class Paladin(val name: String) extends Player(Actor.Role.Healer) with PaladinAuras with PaladinSpells {
 	// Glyphs
 	object Glyph {
 		var BeaconOfLight = false

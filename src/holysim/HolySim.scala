@@ -51,7 +51,7 @@ object HolySim extends App {
 			// Default actor selection order
 			// - Not beaconed targets
 			// - Beaconed targets
-			// -
+			// - Random tank
 			def Q(query: ActorQuery) = query excluding beaconTargets or query or (select random Tank)
 
 			ActorPriorityList(
@@ -66,6 +66,6 @@ object HolySim extends App {
 
 	sim.run()
 
-	val query = select mostInjured Player
+	val query = select mostInjured Player or (select random Tank)
 	println(query.get)
 }
