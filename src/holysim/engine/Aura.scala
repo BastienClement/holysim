@@ -160,7 +160,7 @@ object Aura {
 		def tick() = onTick()
 
 		private[this] var next_tick: ScheduledAction = null
-		private[this] def schedule_next(): Unit = next_tick = sim.schedule(effective_interval, tick)
+		private[this] def schedule_next(): Unit = next_tick = sim.schedule(effective_interval, () => tick())
 
 		onGain += (_ => schedule_next())
 		onTick += schedule_next()

@@ -4,16 +4,19 @@ import scala.language.implicitConversions
 import scala.util.Random
 import holysim.engine.ActorQuery._
 import holysim.engine.ActorQueryInternal._
+import holysim.utils.Reactive
 
 /**
  * Interface that abstract away the use of a query
  */
 trait QueryableActor {
 	def get: Option[Actor]
+	def flush(): Unit
 }
 
 object QueryableActor {
 	implicit def fromActor(a: Actor): QueryableActor = StaticActorQuery(a)
+	implicit def toActor(qa: QueryableActor): Option[Actor] = qa.get
 }
 
 /**
@@ -21,6 +24,7 @@ object QueryableActor {
  */
 case object DummyActorQuery extends QueryableActor {
 	def get = None
+	def flush() = {}
 }
 
 /**
@@ -28,6 +32,7 @@ case object DummyActorQuery extends QueryableActor {
  */
 case class StaticActorQuery(actor: Actor) extends QueryableActor {
 	val get = Option(actor)
+	def flush() = {}
 }
 
 /**
@@ -55,12 +60,20 @@ case class ActorQuery(sim: Simulator) extends QueryableActor {
 	/** The selector strategy, defaults to random */
 	private[this] var selector: ActorSelector = RandomSelector
 
-	/** The selected actor cache */
-	private[this] var selected: Option[Actor] = null
-	private[this] var selected_control: Long = -1
-
 	/** The next Query if this one doesn't match anything */
 	private[this] var next: QueryableActor = DummyActorQuery
+
+	/** The selected actor cache */
+	private[this] val selected = Reactive {
+		// Apply preference
+		val final_pool = if (preferPartition != null) {
+			val (first, second) = pool.partition(preferPartition)
+			if (first.nonEmpty) first else second
+		} else pool
+
+		// Apply selector and next query
+		selector.select(final_pool) orElse next.get
+	}
 
 	def accordingTo(s: ActorSelector) = {
 		selector = s
@@ -101,29 +114,15 @@ case class ActorQuery(sim: Simulator) extends QueryableActor {
 		this
 	}
 
-	/** Perform actor selection */
-	def get: Option[Actor] = {
-		if (selected != null && selected_control == ActorQueryInternal.cache_control) {
-			selected
-		} else {
-			// Apply preference
-			val final_pool = if (preferPartition != null) {
-				val (first, second) = pool.partition(preferPartition)
-				if (first.nonEmpty) first else second
-			} else pool
+	def get: Option[Actor] = selected.value
 
-			// Apply selector and next query
-			selected = selector.select(final_pool) orElse next.get
-			selected_control = ActorQueryInternal.cache_control
-			selected
-		}
+	def flush() = {
+		selected.invalidate()
+		next.flush()
 	}
 }
 
 object ActorQueryInternal {
-	/** When this value changes, all matches caches are flushed */
-	var cache_control: Long = 0
-
 	/** Generic interface of a filter function container */
 	trait ActorFilter extends (Actor => Boolean) {
 		val dummy: Boolean = false
@@ -143,70 +142,84 @@ object ActorQueryInternal {
 
 	/** Generic interface of an actor selector */
 	trait ActorSelector {
-		def select(pool: Vector[Actor]): Option[Actor]
+		def select(pool: IndexedSeq[Actor]): Option[Actor]
+	}
+
+	abstract class QueryBoostrap
+	object QueryBoostrap {
+		implicit def bootstrap(s: QueryBoostrap)(implicit sim: Simulator): ActorQuery = ActorQuery(sim)
 	}
 }
 
 object ActorQuery {
 	/** Dummy object to bootstrap actor query */
-	object select
-	implicit def selectBootstrap(s: select.type)(implicit sim: Simulator): ActorQuery = ActorQuery(sim)
+	object query extends QueryBoostrap
 
-	/** Flush the matching cache */
-	def flush() = ActorQueryInternal.cache_control += 1
-
+	// Implicitly add Static or Dynamic tags to simple predicate functions
 	implicit def predicateToStatic(predicate: (Actor) => Boolean): StaticFilter = new ActorCustomFilter(predicate) with StaticFilter
 	implicit def predicateToDynamic(predicate: (Actor) => Boolean): DynamicFilter = new ActorCustomFilter(predicate) with DynamicFilter
 
 	// Actor category filters  ==========================================================================================
+
 	object Unit extends ActorDummyFilter
-	object Target extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Hostile }
-	object Player extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Friendly }
+
+	object Hostile extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Hostile }
+	object Friendly extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.reaction == Actor.Reaction.Friendly }
+
 	object Tank extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Tank }
 	object Healer extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Healer }
 	object Damager extends ActorFilter with StaticFilter { def apply(actor: Actor) = actor.role == Actor.Role.Damage }
 
 	// Actor selectors ==================================================================================================
+
+	/** Select a random actor from the pool */
 	object RandomSelector extends ActorSelector {
-		def select(pool: Vector[Actor]) = pool.size match {
+		def select(pool: IndexedSeq[Actor]) = pool.size match {
 			case 0 => None
 			case 1 => Option(pool.head)
 			case size => Option(pool(Random.nextInt(size)))
 		}
 	}
 
+	/**
+	 * Selects the most injured actor from the pool
+	 * Full health actor are not matched
+	 */
 	object MostInjuredSelector extends ActorSelector {
-		def select(pool: Vector[Actor]) = {
-			var maxHealthDeficit: Int = 1
-			var candidates = Vector[Actor]()
+		def select(pool: IndexedSeq[Actor]) = {
+			var max_absolute = 1
+			var max_percent = 0.0
+			var candidates: List[Actor] = Nil
 
-			for (candidate <- pool) {
-				0 match {
-					case deficit if deficit > maxHealthDeficit =>
-						// More injured than any previously encountered actor
-						maxHealthDeficit = deficit
-						candidates = Vector(candidate)
-					case deficit if deficit == maxHealthDeficit =>
-						// As much injured than the most injured until now
-						candidates :+= candidate
-					case _ =>
-					// No so much injured
+			for (actor <- pool) {
+				val actor_absolute = 0
+				val actor_percent = 0.0
+
+				if (actor_percent > max_percent || (actor_percent == max_percent && actor_absolute > max_absolute)) {
+					candidates = actor :: Nil
+					max_absolute = actor_absolute
+					max_percent = actor_percent
+				} else if (actor_percent == max_percent && actor_absolute == max_absolute) {
+					candidates = actor :: candidates
 				}
 			}
 
-			RandomSelector.select(candidates)
+			if (candidates.size > 1)
+				RandomSelector.select(candidates.toIndexedSeq)
+			else
+				candidates.headOption
 		}
 	}
 
 	object InjuredSelector extends ActorSelector {
-		def select(pool: Vector[Actor]) = pool(Random.nextInt(pool.size))
+		def select(pool: IndexedSeq[Actor]) = pool(Random.nextInt(pool.size))
 	}
 
 	case class NthSelector(i: Int) extends ActorSelector {
 		assert(i > 0)
 		val index = i - 1
 
-		def select(pool: Vector[Actor]) = pool.size match {
+		def select(pool: IndexedSeq[Actor]) = pool.size match {
 			case size if size > index => Option(pool(index))
 			case _ => None
 		}

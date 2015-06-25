@@ -15,7 +15,7 @@ object HolySim extends App {
 		def blizzr: Int = (if (n - n.floor == 0.5) n.floor + (n.floor % 2) else n.round).toInt
 	}
 
-	implicit val sim = Simulator {
+	val sim = Simulator {
 		val Blash = new Paladin("Blash") {
 			// Gear
 			this equip HelmetOfGuidingLight_M.gem(50.crit)
@@ -46,18 +46,23 @@ object HolySim extends App {
 			onPrepare += this gain ArcaneAcuity
 			//onPrepare += this gain PercentStatsBuff
 
-			val beaconTargets = (p: Actor) => p.has(BeaconOfLight.Beacon) || p.has(BeaconOfFaith.Beacon)
+			val nonBeaconTargets = (a: Actor) => !a.has(BeaconOfLight.Beacon) && !a.has(BeaconOfFaith.Beacon)
 
-			// Default actor selection order
-			// - Not beaconed targets
-			// - Beaconed targets
+			// Default actor prioritization
+			// - Most injured non-beacon target
+			// - Most injured beacon target
 			// - Random tank
-			def Q(query: ActorQuery) = query excluding beaconTargets or query or (select random Tank)
+			val Auto = query mostInjured Friendly prefer nonBeaconTargets or (query random Tank)
 
 			ActorPriorityList(
-				Cast (BeaconOfLight) on (select first Tank),
-				Cast (BeaconOfFaith) on (select second Tank),
-				Cast (HolyShock) on Q(select mostInjured Player excluding beaconTargets)
+				Cast (BeaconOfLight) on (query first Tank),
+				Cast (BeaconOfFaith) on (query second Tank),
+				Cast (LayOnHands) on Auto when true,
+				Cast (HolyShock) on Auto when (this.name == "Blash"),
+				Cast (HolyPrism),
+				Cast (LightOfDawn) when (query mostInjured Friendly).get.exists(_.name == "Blash"),
+				Cast (WordOfGlory) when (this has 'DivinePurpose),
+				Cast (HolyLight) on Auto
 			)
 		}
 
@@ -65,7 +70,4 @@ object HolySim extends App {
 	}
 
 	sim.run()
-
-	val query = select mostInjured Player or (select random Tank)
-	println(query.get)
 }

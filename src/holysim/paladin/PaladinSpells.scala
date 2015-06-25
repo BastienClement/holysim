@@ -199,4 +199,8 @@ trait PaladinSpells {
 
 		onCast += (ev => if (Talent.EternalFlame) ev.target gain EternalFlame(ev.cost))
 	}
+
+	object HolyPrism extends Spell('HolyPrism) {
+
+	}
 }

@@ -2,20 +2,22 @@ package holysim.engine
 
 import holysim.utils.{CallbackListArg, Reactive}
 
-class Spell(val identity: Symbol)(implicit impl_owner: Actor) extends WithIdentity {
+abstract class Spell(val identity: Symbol)(implicit impl_owner: Actor) extends WithIdentity {
 	val owner = impl_owner
 	val sim = owner.sim
 
-	def cast(target: Actor) = {
+	val onCast = new EventHook[SpellCastEvent]()
+	final def cast(target: Actor) = {
 		val resource = None
 		val cost = 0
-
-		val event = SpellCastEvent(this, owner, target, resource, cost)
-		onCast(event)
-		sim.trigger(event)
+		onCast(SpellCastEvent(this, owner, target, resource, cost))
 	}
 
-	val onCast = new CallbackListArg[SpellCastEvent]()
+	def available(target: Actor): Boolean = true
+
+
+	protected var cast_time: Reactive[Int] = 0
+	val castTime: Reactive[Int] = Reactive(cast_time / owner.haste)
 
 	override def toString = identity.name
 }
@@ -23,5 +25,8 @@ class Spell(val identity: Symbol)(implicit impl_owner: Actor) extends WithIdenti
 object Spell {
 	trait Cooldown extends Spell {
 		val cooldown: Reactive[Int]
+		private var ready: Int = 0
+
+		override def available(target: Actor) = super.available(target) && sim.time >= ready
 	}
 }

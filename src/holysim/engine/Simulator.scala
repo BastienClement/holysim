@@ -74,11 +74,12 @@ class Simulator private {
 	private val queue = mutable.PriorityQueue[ScheduledAction]()
 
 	/** Add an action to the queue */
-	def after(time: Int)(cb: => Unit): ScheduledAction = schedule(time, () => cb)
-	def schedule(time: Int, cb: () => Unit): ScheduledAction = {
-		val action = ScheduledAction(current_time + time, Action(cb))
-		queue.enqueue(action)
-		action
+	def after(time: Int)(cb: => Unit): ScheduledAction = schedule(time, Action(() => cb))
+	def schedule(time: Int, cb: () => Unit): ScheduledAction = schedule(time, Action(cb))
+	def schedule(time: Int, action: Action) = {
+		val sa = ScheduledAction(current_time + time, action)
+		queue.enqueue(sa)
+		sa
 	}
 
 	/** Fetch the next action from the queue */
@@ -105,7 +106,7 @@ class Simulator private {
 		prepareRoster()
 
 		// Prepare actors
-		actors.foreach(_.onPrepare())
+		actors.foreach(_.prepare())
 
 		// Enter running state
 		current_state = State.Running

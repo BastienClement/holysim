@@ -1,5 +1,6 @@
 package holysim.engine
 
+import holysim.engine.ActorAction.Wait
 import holysim.utils.CallbackList
 
 object Actor {
@@ -25,11 +26,25 @@ trait Actor extends Aura.Target with Modifier.Target with ActorStats {
 	// Add self to simulator list of actors
 	sim.actors.add(this)
 
-	val onPrepare = new CallbackList()
-
 	// Actor gear
 	val gear = new Gear
 	def equip(item: Item) = gear.equip(item)
+
+	// Actions
+	var actions: ActorPriorityList = null
+	var current_action: ScheduledAction = null
+
+	def select() = if (current_action == null) {
+		val action = (if (actions != null) actions.select else None) getOrElse Wait(50)
+		current_action = action.begin()
+	}
+
+	// Prepare
+	val onPrepare = new CallbackList()
+	def prepare() = {
+		onPrepare()
+		select()
+	}
 
 	// Attempt to trigger procs
 	def trigger(e: Event): Unit = {
