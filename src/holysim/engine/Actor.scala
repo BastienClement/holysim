@@ -18,7 +18,7 @@ object Actor {
 	trait CooldownLike {
 		def begin(time: Int): Unit
 		def update(dt: Int): Unit
-		def reset(): Unit
+		def reset(time: Int = 0): Unit
 		def ready: Boolean
 		def left: Int
 	}
@@ -27,9 +27,12 @@ object Actor {
 		private var cooldown_time = 0
 		private def now = owner.sim.time
 
-		def begin(time: Int) = cooldown_time = now + time
-		def update(dt: Int) = cooldown_time += dt
-		def reset() = cooldown_time = now
+		def begin(time: Int) = reset(now + time)
+		def update(dt: Int) = reset(cooldown_time + dt)
+
+		def reset(time: Int = now) = if (owner.sim.state == Simulator.State.Running) {
+			cooldown_time = time
+		}
 
 		def ready = cooldown_time <= now
 		def left = math.max(cooldown_time - now, 0)
@@ -39,7 +42,7 @@ object Actor {
 		def ready = true
 		def begin(time: Int) = {}
 		def update(dt: Int) = {}
-		def reset() = {}
+		def reset(time: Int = 0) = {}
 		def left = 0
 	}
 }
@@ -85,6 +88,13 @@ trait Actor extends Aura.Target with Modifier.Target with ActorStats {
 	// Attempt to trigger procs
 	def trigger(e: Event): Unit = {
 
+	}
+
+	/**
+	 * Heal this actor
+	 */
+	def heal(spell: Spell, amount: Int, crit: Boolean, multistrike: Boolean) = {
+		sim.trigger(SpellHealingEvent(spell, spell.owner, this, amount, crit, multistrike))
 	}
 
 	val name: String

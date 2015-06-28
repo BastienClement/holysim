@@ -10,11 +10,9 @@ trait PaladinSpells {
 	 * Imbues you with wrathful light, increasing healing done by 100% and haste, critical strike chance,
 	 * and damage by 20% for 20 sec. (3 min cooldown)
 	 */
-	object AvengingWrath extends Spell('AvengingWrath) with Spell.Cooldown {
+	object AvengingWrath extends Spell('AvengingWrath) with Spell.Instant with Spell.Cooldown {
 		// 3 min base (1.5 min glyphed)
-		val cooldown = Reactive {
-			if (Glyph.MercifulWrath) 90000 else 180000
-		}
+		lazy val cooldown = if (Glyph.MercifulWrath) 90000 else 180000
 
 		/** The base buff */
 		case class Buff() extends Aura('AvengingWrath) with Aura.Duration with Aura.Modifiers {
@@ -34,26 +32,28 @@ trait PaladinSpells {
 
 			// Automatically gain SanctifiedWrath
 			onGain += { ev =>
-				if (Talent.SanctifiedWrath) ev.target gain SanctifiedWrath
+				if (Talent.SanctifiedWrath) ev.target gain SanctifiedWrath()
 			}
 
 			// Automatically lose SanctifiedWrath
 			onLose += { ev =>
-				if (Talent.SanctifiedWrath) ev.target lose SanctifiedWrath
+				if (Talent.SanctifiedWrath) ev.target lose 'SanctifiedWrath
 			}
 		}
 
 		/** Additional effects with Sanctified Wrath */
-		object SanctifiedWrath extends Aura('SanctifiedWrath) with Aura.Modifiers {
+		case class SanctifiedWrath() extends Aura('SanctifiedWrath) with Aura.Modifiers {
 			// Merciful Wrath reduce effects by 50%
 			if (Glyph.MercifulWrath) {
-				modifiers += HolyShock.CriticalChanceBonus(10)
-				modifiers += HolyShock.CooldownMultiplier(0.75)
+				modifiers += Mod.SpellCriticalChance(HolyShock)(10)
+				modifiers += Mod.SpellCooldownPercent(HolyShock)(0.25)
 			} else {
-				modifiers += HolyShock.CriticalChanceBonus(20)
-				modifiers += HolyShock.CooldownMultiplier(0.50)
+				modifiers += Mod.SpellCriticalChance(HolyShock)(20)
+				modifiers += Mod.SpellCooldownPercent(HolyShock)(0.50)
 			}
 		}
+
+		onCast += (ev => ev.target gain Buff())
 	}
 
 	/**
@@ -67,8 +67,9 @@ trait PaladinSpells {
 	 * Empowered Beacon of Light (Level 92+)
 	 * Your single-target heals heal your Beacon of Light target for 10% more. Also applies to Beacon of Faith.
 	 */
-	class BeaconSpell(identity: Symbol) extends Spell(identity) with Spell.Cooldown {
-		val cooldown = Reactive(3000)
+	class BeaconSpell(identity: Symbol) extends Spell(identity) with Spell.Instant with Spell.Cooldown {
+		val cooldown = 3000
+		override val cooldown_category = 'SharedBeaconCooldown
 
 		object Beacon extends Aura(identity) with Aura.Modifiers with Aura.SingleTarget {
 			modifiers ++= List(
@@ -100,13 +101,15 @@ trait PaladinSpells {
 	 * 1% of base mana
 	 * 15 sec cooldown
 	 */
-	object BeaconOfInsight extends Spell('BeaconOfInsight)
+	object BeaconOfInsight extends Spell('BeaconOfInsight) with Spell.Instant with Spell.Cooldown {
+		val cooldown = 15000
+	}
 
 	/**
 	 * Inspire all party and raid members within 40 yards, granting them immunity to Silence and Interrupt effects
 	 * and reducing all damage taken by 20%. Lasts 6 sec. (3 min cooldown)
 	 */
-	object DevotionAura extends Spell('DevotionAura) {
+	object DevotionAura extends Spell('DevotionAura) with Spell.Instant {
 		object Devoted extends Aura('DevotionAura) with Aura.Duration {
 			val duration = 6000
 		}
@@ -117,7 +120,9 @@ trait PaladinSpells {
 	 * 20% of base mana
 	 * 1.5 sec cast
 	 */
-	object FlashOfLight extends Spell('FlashOfLight)
+	object FlashOfLight extends Spell('FlashOfLight) {
+		val cast_time = 1500
+	}
 
 	/**
 	 * Heals a friendly target for (300% of Spell power).
@@ -125,9 +130,9 @@ trait PaladinSpells {
 	 * 2.5 sec cast
 	 */
 	object HolyLight extends Spell('HolyLight) with Spell.Healing {
+		val cast_time = 2500
 		val base = 1
 		val scaling = 3.0
-		cast_time := 2500
 	}
 
 	/**
@@ -144,6 +149,8 @@ trait PaladinSpells {
 	 * Increases the healing from Daybreak by 100%.
 	 */
 	object HolyRadiance extends Spell('HolyRadiance) {
+		val cast_time = 2500
+
 		object DaybreakProc extends Proc {
 			case class Daybreak() extends Aura('Daybreak) with Aura.Duration with Aura.Stackable {
 				val duration = 10000
@@ -163,16 +170,15 @@ trait PaladinSpells {
 	 * Enhanced Holy Shock (Level 92+)
 	 * Your Holy Light and Flash of Light have a 10% chance to cause your next Holy Shock to not trigger a cooldown.
 	 */
-	object HolyShock extends Spell('HolyShock) with Spell.Cooldown {
-		object CriticalChanceBonus extends Modifier.Additive
-		object CooldownMultiplier extends Modifier.Multiplicative
+	object HolyShock extends Spell('HolyShock) with Spell.Instant with Spell.Cooldown with Spell.Healing {
+		val base = 0
+		val scaling = 2.10
+
+		val cooldown = 6000
+		override val crit_chance_multiplier = 2
 
 		object EnhancedHolyShock extends Aura('EnhancedHolyShock) with Aura.Duration {
 			val duration = 15000
-		}
-
-		val cooldown = Reactive[Int] {
-			6000 / owner.haste
 		}
 	}
 
@@ -181,7 +187,7 @@ trait PaladinSpells {
 	 * for up to [(24.4992% of Spell power) * 3].
 	 */
 	object LightOfDawn extends Spell('LightOfDown) {
-
+		val cast_time = 1500
 	}
 
 	/**
@@ -189,7 +195,7 @@ trait PaladinSpells {
 	 * Cannot be used on a target with Forbearance.
 	 * Causes Forbearance for 1 min.
 	 */
-	object LayOnHands extends Spell('LayOnHands) {
+	object LayOnHands extends Spell('LayOnHands) with Spell.Instant {
 
 	}
 
@@ -197,6 +203,8 @@ trait PaladinSpells {
 	 * Consumes up to 3 Holy Power to heal a friendly target for up to (330% of Spell power).
 	 */
 	object WordOfGlory extends Spell('WordOfGlory) {
+		val cast_time = 1500
+
 		case class EternalFlame(var hp: Int) extends Aura('EternalFlame) with Aura.PeriodicAura {
 			// If hp cost is 0, change it to 3 (Divine Purpose style aura)
 			if (hp == 0) hp = 3
@@ -210,7 +218,7 @@ trait PaladinSpells {
 		onCast += (ev => if (Talent.EternalFlame) ev.target gain EternalFlame(ev.cost))
 	}
 
-	object HolyPrism extends Spell('HolyPrism) with Spell.Cooldown {
-		val cooldown = Reactive(20000)
+	object HolyPrism extends Spell('HolyPrism) with Spell.Instant with Spell.Cooldown {
+		val cooldown = 20000
 	}
 }

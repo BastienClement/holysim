@@ -1,10 +1,12 @@
 package holysim.engine
 
+import java.util.Random
+import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.util.DynamicVariable
 import holysim.engine.Action.CallbackAction
-import holysim.engine.Simulator.State
+import holysim.engine.Simulator.{RNG, State}
 
 object Simulator {
 	/**
@@ -32,17 +34,38 @@ object Simulator {
 	var debug = false
 
 	/**
+	 *
+	 */
+	var deterministic = false
+
+	/**
 	 * Simulator states
 	 */
 	object State extends Enumeration {
 		final val Prepare, Running, Done = Value
 		final val EmptyQueueFail = Value
 	}
+
+	class RNG {
+		private val gen = if (Simulator.deterministic) {
+			new Random(0)
+		} else {
+			ThreadLocalRandom.current()
+		}
+
+		def nextInt(n: Int) = gen.nextInt(n)
+		def roll(c: Double) = gen.nextDouble() <= c
+	}
 }
 
 class Simulator private {
 	// Implicit reference to self, for implicits arguments
 	implicit private val self = this
+
+	/**
+	 * The random number generator
+	 */
+	val rng = new RNG
 
 	/**
 	 * Maximum time allowed for the simulation

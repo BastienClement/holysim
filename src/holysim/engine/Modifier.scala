@@ -1,13 +1,9 @@
 package holysim.engine
 
 import scala.collection.mutable
-import scala.reflect.ClassTag
-import holysim.engine.Mod.{SpellHealingReceivedPercent, SpellHealingPercent}
-import holysim.utils.{Reactive, Memoized}
-import scala.reflect.runtime.universe._
-
 import scala.math.Numeric
-import Modifier._
+import holysim.engine.Modifier._
+import holysim.utils.{Memoized, Reactive}
 
 /**
  * ModifierValue constructor
@@ -31,7 +27,8 @@ object Modifier {
 	abstract class Minimum[T](base: T)(implicit n: Numeric[T]) extends Modifier[T](base, (a, b) => n.min(a, b))
 	abstract class Unique[T](base: T) extends Modifier[T](base, (a, b) => b)
 
-	trait Target { this: Actor =>
+	trait Target {
+		this: Actor =>
 		/**
 		 * The cache of all applied aura effects
 		 */
@@ -114,8 +111,19 @@ object Mod {
 	case class SpellHealingPercent(spell: BoundSymbol[Spell]) extends Multiplicative
 	case class SpellHealingReceivedPercent(spell: BoundSymbol[Spell], source: Actor) extends Multiplicative
 
+	// Mechanisms
+	case class SpellCriticalChance(spell: BoundSymbol[Spell]) extends Additive
+	case class SpellCriticalChancePercent(spell: BoundSymbol[Spell]) extends Multiplicative
+	case class SpellMultistrikeChance(spell: BoundSymbol[Spell]) extends Additive
+	case class SpellMultistrikeChancePercent(spell: BoundSymbol[Spell]) extends Multiplicative
+
 	// Cast time
 	case class SpellCastTime(spell: BoundSymbol[Spell]) extends Additive
+	case class SpellCastTimePercent(spell: BoundSymbol[Spell]) extends Multiplicative
+
+	// Cooldown
+	case class SpellCooldown(spell: BoundSymbol[Spell]) extends Additive
+	case class SpellCooldownPercent(spell: BoundSymbol[Spell]) extends Multiplicative
 
 	// Damage
 	case object DamageTakenPercent extends Multiplicative

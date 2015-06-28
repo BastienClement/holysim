@@ -42,5 +42,6 @@ class Paladin(val name: String) extends Player(Actor.Role.Healer) with PaladinAu
 		this gain InfusionOfLight
 		this gain IlluminatedHealing
 		this gain SealOfInsight
+		this gain SanctityOfBattle
 	}
 }

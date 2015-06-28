@@ -1,7 +1,6 @@
 package holysim.engine
 
 import scala.language.implicitConversions
-import scala.util.Random
 import holysim.engine.ActorQuery._
 import holysim.engine.ActorQueryInternal._
 import holysim.utils.Reactive
@@ -25,6 +24,7 @@ trait QueryableActor {
 object QueryableActor {
 	implicit def fromActor(a: Actor): QueryableActor = StaticActorQuery(a)
 	implicit def toActor(qa: QueryableActor): Option[Actor] = qa.get
+	implicit def toStrictActor(qa: QueryableActor): Actor = qa.get.get
 }
 
 /**
@@ -189,7 +189,7 @@ object ActorQuery {
 		def select(pool: IndexedSeq[Actor]) = pool.size match {
 			case 0 => None
 			case 1 => Option(pool.head)
-			case size => Option(pool(Random.nextInt(size)))
+			case size => Option(pool(Simulator.current.rng.nextInt(size)))
 		}
 	}
 
@@ -224,7 +224,7 @@ object ActorQuery {
 	}
 
 	object InjuredSelector extends ActorSelector {
-		def select(pool: IndexedSeq[Actor]) = pool(Random.nextInt(pool.size))
+		def select(pool: IndexedSeq[Actor]) = ???
 	}
 
 	case class NthSelector(i: Int) extends ActorSelector {

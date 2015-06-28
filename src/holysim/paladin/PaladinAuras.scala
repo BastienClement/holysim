@@ -4,6 +4,7 @@ import holysim.common
 import holysim.engine.Mod
 import holysim.engine.{Aura, Modifier}
 import holysim.engine.SymbolUtils
+import holysim.utils.Reactive
 
 trait PaladinAuras extends common.Auras {
 	this: Paladin =>
@@ -96,5 +97,12 @@ trait PaladinAuras extends common.Auras {
 	 */
 	object SealOfInsight extends Aura('SealOfInsight) with Aura.Modifiers {
 		modifiers += Mod.HealingPercent(1.05)
+	}
+
+	/**
+	 * Melee haste effects lower the cooldown and global cooldown of your HolyShock
+	 */
+	object SanctityOfBattle extends Aura('SanctityOfBattle) with Aura.Modifiers {
+		modifiers += Mod.SpellCooldownPercent(HolyShock)(Reactive(1/owner.haste))
 	}
 }

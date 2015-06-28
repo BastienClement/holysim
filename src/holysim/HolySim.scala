@@ -10,6 +10,7 @@ import holysim.paladin._
 
 object HolySim extends App {
 	Simulator.debug = true
+	//Simulator.deterministic = true
 
 	implicit class BlizzRound(val n: Double) extends AnyVal {
 		def blizzr: Int = (if (n - n.floor == 0.5) n.floor + (n.floor % 2) else n.round).toInt
@@ -38,6 +39,7 @@ object HolySim extends App {
 			// Talents
 			Talent.EternalFlame = true
 			Talent.DivinePurpose = true
+			Talent.SanctifiedWrath = false
 
 			// Gylphs
 			Glyph.BeaconOfLight = true
@@ -46,6 +48,10 @@ object HolySim extends App {
 
 			// Blood elf racial
 			onPrepare += this gain ArcaneAcuity
+
+			// Cast beacons
+			onPrepare += BeaconOfLight cast (query first Tank)
+			onPrepare += BeaconOfFaith cast (query second Tank)
 
 			// Filter for non-beaconned target
 			val nonBeaconTargets = (a: Actor) => !a.has(BeaconOfLight.Beacon) && !a.has(BeaconOfFaith.Beacon)
@@ -58,8 +64,7 @@ object HolySim extends App {
 
 			// Priority list
 			actions = ActorPriorityList(
-				Cast (BeaconOfLight) on (query first Tank),
-				Cast (BeaconOfFaith) on (query second Tank),
+				Cast (AvengingWrath),
 				Cast (LayOnHands) on Auto when false,
 				Cast (HolyShock) on Auto when (this.name == "Blash"),
 				Cast (HolyPrism),

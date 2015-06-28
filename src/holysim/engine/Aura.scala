@@ -301,11 +301,11 @@ object Aura {
 	trait PeriodicAura extends HastedTicks with Duration {
 		val healing: Reactive[Int]
 
-		val spell = new Tick
+		/*val spell = new Tick
 		class Tick private[PeriodicAura] extends Spell(identity)(owner) {
 
 		}
 
-		onTick += spell.cast(target)
+		onTick += spell.cast(target)*/
 	}
 }
