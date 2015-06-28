@@ -111,8 +111,11 @@ object Mod {
 
 	// Healing
 	case object HealingPercent extends Multiplicative
-	case class SpellHealingPercent(spell_identity: BoundSymbol[Spell]) extends Multiplicative
-	case class SpellHealingReceivedPercent(spell_identity: BoundSymbol[Spell], source: Actor) extends Multiplicative
+	case class SpellHealingPercent(spell: BoundSymbol[Spell]) extends Multiplicative
+	case class SpellHealingReceivedPercent(spell: BoundSymbol[Spell], source: Actor) extends Multiplicative
+
+	// Cast time
+	case class SpellCastTime(spell: BoundSymbol[Spell]) extends Additive
 
 	// Damage
 	case object DamageTakenPercent extends Multiplicative

@@ -35,17 +35,19 @@ object HolySim extends App {
 			this equip FangOfTheEarth_M.gem(50.crit)
 			this equip HeartOfTheClefthoof_M
 
+			// Talents
 			Talent.EternalFlame = true
 			Talent.DivinePurpose = true
 
+			// Gylphs
 			Glyph.BeaconOfLight = true
 			Glyph.MercifulWrath = true
 			Glyph.ProtectorOfTheInnocent = true
 
 			// Blood elf racial
 			onPrepare += this gain ArcaneAcuity
-			//onPrepare += this gain PercentStatsBuff
 
+			// Filter for non-beaconned target
 			val nonBeaconTargets = (a: Actor) => !a.has(BeaconOfLight.Beacon) && !a.has(BeaconOfFaith.Beacon)
 
 			// Default actor prioritization
@@ -54,10 +56,11 @@ object HolySim extends App {
 			// - Random tank
 			val Auto = query mostInjured Friendly prefer nonBeaconTargets or (query random Tank)
 
-			ActorPriorityList(
+			// Priority list
+			actions = ActorPriorityList(
 				Cast (BeaconOfLight) on (query first Tank),
 				Cast (BeaconOfFaith) on (query second Tank),
-				Cast (LayOnHands) on Auto when true,
+				Cast (LayOnHands) on Auto when false,
 				Cast (HolyShock) on Auto when (this.name == "Blash"),
 				Cast (HolyPrism),
 				Cast (LightOfDawn) when (query mostInjured Friendly).get.exists(_.name == "Blash"),
@@ -65,8 +68,6 @@ object HolySim extends App {
 				Cast (HolyLight) on Auto
 			)
 		}
-
-		val Jouzladin = new Paladin("Jouzladin") {}
 	}
 
 	sim.run()

@@ -85,6 +85,8 @@ trait PaladinSpells {
 		}
 
 		onCast += (_.target gain Beacon)
+
+		override def available(target: Actor) = super.available(target) && !target.has(Beacon)
 	}
 
 	object BeaconOfLight extends BeaconSpell('BeaconOfLight)
@@ -122,7 +124,11 @@ trait PaladinSpells {
 	 * 10.313% of base mana
 	 * 2.5 sec cast
 	 */
-	object HolyLight extends Spell('HolyLight)
+	object HolyLight extends Spell('HolyLight) with Spell.Healing {
+		val base = 1
+		val scaling = 3.0
+		cast_time := 2500
+	}
 
 	/**
 	 * Imbues a friendly target with radiant energy, healing that target for (151.319% of Spell power) and up
@@ -157,12 +163,16 @@ trait PaladinSpells {
 	 * Enhanced Holy Shock (Level 92+)
 	 * Your Holy Light and Flash of Light have a 10% chance to cause your next Holy Shock to not trigger a cooldown.
 	 */
-	object HolyShock extends Spell('HolyShock) {
+	object HolyShock extends Spell('HolyShock) with Spell.Cooldown {
 		object CriticalChanceBonus extends Modifier.Additive
 		object CooldownMultiplier extends Modifier.Multiplicative
 
 		object EnhancedHolyShock extends Aura('EnhancedHolyShock) with Aura.Duration {
 			val duration = 15000
+		}
+
+		val cooldown = Reactive[Int] {
+			6000 / owner.haste
 		}
 	}
 
@@ -200,7 +210,7 @@ trait PaladinSpells {
 		onCast += (ev => if (Talent.EternalFlame) ev.target gain EternalFlame(ev.cost))
 	}
 
-	object HolyPrism extends Spell('HolyPrism) {
-
+	object HolyPrism extends Spell('HolyPrism) with Spell.Cooldown {
+		val cooldown = Reactive(20000)
 	}
 }

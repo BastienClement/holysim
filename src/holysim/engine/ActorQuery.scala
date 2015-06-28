@@ -12,6 +12,14 @@ import holysim.utils.Reactive
 trait QueryableActor {
 	def get: Option[Actor]
 	def flush(): Unit
+
+	/**
+	 * Shortcut for flush() then get()
+	 */
+	def refresh = {
+		flush()
+		get
+	}
 }
 
 object QueryableActor {
@@ -40,36 +48,39 @@ case class StaticActorQuery(actor: Actor) extends QueryableActor {
  */
 case class ActorQuery(sim: Simulator) extends QueryableActor {
 	/** Static filters are evaluated only once */
-	private[this] var staticFilters = Vector[(Actor) => Boolean]()
+	private var staticFilters = Vector[(Actor) => Boolean]()
 
 	/** Dynamic filters are evaluated every time */
-	private[this] var dynamicFilters = Vector[(Actor) => Boolean]()
+	private var dynamicFilters = Vector[(Actor) => Boolean]()
 
 	/** Use to favorise some targets */
-	private[this] var preferPartition: (Actor) => Boolean = null
+	private var preferPartition: (Actor) => Boolean = null
 
 	/** Every actors from the simulation */
-	private[this] lazy val full_pool = sim.actors_pool
+	private lazy val full_pool = sim.actors_pool
 
 	/** Actors matching static filters */
-	private[this] lazy val base_pool = if (staticFilters.nonEmpty) full_pool.filter(a => staticFilters.forall(_(a))) else full_pool
+	private lazy val base_pool = if (staticFilters.nonEmpty) full_pool.filter(a => staticFilters.forall(_(a))) else full_pool
 
 	/** Actors matching both static and dynamic filter */
-	private[this] def pool = if (dynamicFilters.nonEmpty) base_pool.filter(a => dynamicFilters.forall(_(a))) else base_pool
+	private val pool = Reactive {
+		if (dynamicFilters.nonEmpty) base_pool.filter(a => dynamicFilters.forall(_(a)))
+		else base_pool
+	}
 
 	/** The selector strategy, defaults to random */
-	private[this] var selector: ActorSelector = RandomSelector
+	private var selector: ActorSelector = RandomSelector
 
 	/** The next Query if this one doesn't match anything */
-	private[this] var next: QueryableActor = DummyActorQuery
+	private var next: QueryableActor = DummyActorQuery
 
 	/** The selected actor cache */
-	private[this] val selected = Reactive {
+	private val selected = Reactive {
 		// Apply preference
 		val final_pool = if (preferPartition != null) {
 			val (first, second) = pool.partition(preferPartition)
 			if (first.nonEmpty) first else second
-		} else pool
+		} else pool.value
 
 		// Apply selector and next query
 		selector.select(final_pool) orElse next.get
@@ -115,6 +126,7 @@ case class ActorQuery(sim: Simulator) extends QueryableActor {
 	}
 
 	def get: Option[Actor] = selected.value
+	def count = pool.size
 
 	def flush() = {
 		selected.invalidate()

@@ -36,7 +36,7 @@ class Reactive[T](generator: => T)(deps: Reactive[_]*) {
 
 		// If there is a caller attempting to trace dependencies
 		if (caller != null) {
-			children += (caller -> null)
+			children.put(caller, null)
 		}
 
 		opt_val match {
@@ -77,13 +77,13 @@ class Reactive[T](generator: => T)(deps: Reactive[_]*) {
 
 	/** Attach this Reactive to another one, it will then be notified when our value is invalidated */
 	def ~>(c: Reactive[_]) = {
-		children += (c -> null)
+		children.put(c, null)
 		c.invalidate()
 	}
 
 	/** Detach this Reactive from another one previously bound by ~> */
 	def ~/>(c: Reactive[_]) = {
-		children -= c
+		children.remove(c)
 		c.invalidate()
 	}
 

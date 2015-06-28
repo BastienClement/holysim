@@ -69,8 +69,14 @@ trait PaladinAuras extends common.Auras {
 	 *
 	 * Also increases your haste by 10%.
 	 */
-	object InfusionOfLight extends Aura('InfusionOfLight) with Aura.Modifiers {
+	object InfusionOfLight extends Aura('InfusionOfLightPassive) with Aura.Modifiers {
 		modifiers += Mod.HastePercent(1.1)
+		object Buff extends Aura('InfusionOfLight) with Aura.Modifiers with Aura.Duration {
+			val duration = 15000
+			modifiers += Mod.SpellHealingPercent(FlashOfLight)(1.50)
+			modifiers += Mod.SpellCastTime(HolyLight)(-1500)
+			modifiers += Mod.SpellCastTime(HolyRadiance)(-1500)
+		}
 	}
 
 	/**
